@@ -1,0 +1,39 @@
+# credenciais
+.env
+.serena/
+
+# ambiente e build
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+dist/
+*.egg-info/
+.eggs/
+
+# cache em disco (diskcache + locks do sqlite)
+.cache/
+*.db
+*.db-wal
+*.db-shm
+
+# logs e estado
+/var/log/bolao/
+state.json
+
+# macOS
+.DS_Store
+
+# notas e ferramentas de dev (nunca versionar)
+CLAUDE.md
+.claude/
+PLANO.md
+
+# testes: rodo localmente, nao vao pro repo
+tests/
+
+# scripts temporarios de debug
+debug_*.py
+scan_*.py
+scripts/_*.py

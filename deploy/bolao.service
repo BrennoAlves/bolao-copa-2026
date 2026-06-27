@@ -1,0 +1,36 @@
+[Unit]
+Description=Apostador automatico de bolao de futebol
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/bolao
+
+# python do ambiente virtual criado com uv
+ExecStart=/opt/bolao/.venv/bin/python -m bolao.agendador
+
+# variaveis de ambiente
+EnvironmentFile=/opt/bolao/.env
+
+# reinicia em caso de crash
+Restart=always
+RestartSec=30
+
+# logs via journald (journalctl -u bolao -f)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bolao
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+# nao deixa o chromium comer a maquina toda
+CPUQuota=180%
+MemoryHigh=1500M
+MemoryMax=1700M
+
+[Install]
+WantedBy=multi-user.target
