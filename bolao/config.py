@@ -145,6 +145,13 @@ def carregar_config() -> Config:
         janela_aposta_dia_horas=int(os.getenv("JANELA_APOSTA_DIA_HORAS", "28")),
     )
 
+    # BOLAO_BASE_URL e SUPABASE_URL são lidas em nível de módulo (URL_BASE,
+    # SUPABASE_REST_URL) porque vários fetchers as importam direto. Validamos aqui
+    # para falhar no boot, e não em runtime: sem elas o login, a aposta e a leitura
+    # de palpites quebram com URL vazia, depois do daemon já ter subido.
+    _req("BOLAO_BASE_URL")
+    _req("SUPABASE_URL")
+
     if config.estrategia_aposta not in ("ev", "campeao", "auto"):
         erros.append(
             f"  - ESTRATEGIA_APOSTA inválida: '{config.estrategia_aposta}' "
