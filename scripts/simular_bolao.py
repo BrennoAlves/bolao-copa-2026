@@ -3,17 +3,17 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from loguru import logger
 
-from bolao.config import Config, carregar_config
+from bolao.config import carregar_config
 from bolao.fontes import ajustar_probabilidades, buscar_odds, buscar_probabilidades
-from bolao.fontes.site import DadosBolao, carregar_dados_bolao, raspar_bolao
+from bolao.fontes.site import DadosBolao, obter_dados_bolao
 from bolao.modelo import predizer
+from bolao.nomes import casar_identidade
 from bolao.simulador import Adversario, JogoSimulado, simular
 
 
@@ -41,8 +41,8 @@ def main() -> None:
 
     config = carregar_config()
 
-    # carrega ou raspa dados do bolão
-    dados = _obter_dados(config)
+    # HTTP primeiro (rápido, sem browser); cai no scraping Playwright se falhar
+    dados = obter_dados_bolao(config)
     if dados is None:
         print("Não foi possível obter dados do bolão. Verifique as credenciais.")
         sys.exit(1)
@@ -52,17 +52,17 @@ def main() -> None:
     if args.so_scrape:
         return
 
-    # identifica o usuário na classificação. se não vier por flag, usa a
-    # heurística do raspar_bolao: o e-mail começa com o primeiro nome do jogador.
+    # identifica o usuário na classificação: BOLAO_NOME (exato) ou prefixo do
+    # e-mail, igual aos outros scripts de pesquisa (evita meus_pontos=0 quando
+    # o nome de exibição não começa com o e-mail).
     meu_nome = args.meu_nome
     if meu_nome is None:
-        email_lower = config.bolao_email.lower()
-        for nome_cand, *_ in dados.classificacao:
-            if email_lower.startswith(nome_cand.lower().split()[0]):
-                meu_nome = nome_cand
-                break
-        if meu_nome is None:
-            meu_nome = config.bolao_email.split("@")[0]
+        nomes = [n for n, *_ in dados.classificacao]
+        meu_nome = casar_identidade(nomes, config.bolao_email, config.bolao_nome)
+    if meu_nome is None:
+        print("Não achei seu nome na classificação. Use --meu-nome para especificar.")
+        print("Standings:", [n for n, *_ in dados.classificacao])
+        sys.exit(1)
 
     meus_pontos, adversarios = _extrair_adversarios(dados, meu_nome)
 
@@ -134,22 +134,6 @@ def main() -> None:
     for jogo, palpite in zip(jogos_sim, melhor.palpites, strict=False):
         print(f"     {jogo.time_casa} {palpite} {jogo.time_fora}")
     print("=" * 60 + "\n")
-
-
-def _obter_dados(config: Config) -> DadosBolao | None:
-    """Retorna dados do cache se frescos (< 12h), senão raspa o site."""
-    dados = carregar_dados_bolao()
-    if dados is not None:
-        idade = (datetime.now() - dados.scraped_at).total_seconds()
-        if idade < 12 * 3600:
-            logger.info(
-                "Usando dados do cache (raspado há {m:.0f} min)",
-                m=idade / 60,
-            )
-            return dados
-        logger.info("Dados do cache com mais de 12h, raspando o site...")
-
-    return raspar_bolao(config)
 
 
 def _imprimir_standings(dados: DadosBolao) -> None:
